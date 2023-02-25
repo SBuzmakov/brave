@@ -10,6 +10,19 @@ namespace brave
         {
             bool isPlayingAgain = true;
             Console.CursorVisible = false;
+            char symbolSky = ' ';
+            char symbolPlayer = '>';
+            char symbolPlatform = 'T';
+            char symbolGrass = 'M';
+            char symbolPit = '~';
+            char symbolHealItem = '+';
+            char symbolBullet = '=';
+            char symbolCreateItem = 'c';
+            char symbolSharp = '#';
+            char symbolDeadPlayer = '_';
+            char symbolPunch = '-';
+            const ConsoleKey PressKeyY = ConsoleKey.Y;
+            const ConsoleKey PressKeyN = ConsoleKey.N;
 
             while (isPlayingAgain)
             {                
@@ -31,37 +44,38 @@ namespace brave
                 int createPlatformValue = 1;
                 bool isPlaying = true;
 
-                char[,] objects = CreateInitialObjects(gameScreenLength, gameScreenHeigth, gameGroundHeigth);
+                char[,] objects = CreateInitialObjects(gameScreenLength, gameScreenHeigth, gameGroundHeigth, symbolSky, symbolGrass);
 
                 while (lifeValue > 0 && isPlaying)
                 {
-
                     DrawObjects(objects, gameScreenLength, gameScreenHeigth, gameGroundHeigth, ref playerPositionX, ref playerPositionY, displayPositionX, displayPositionY,
-                         barValueMax, ref lifeValue, lifeValueMax, ref scoreValue, ref difficultLevel, ref bulletsValue, ref createPlatformValue);
+                         barValueMax, ref lifeValue, lifeValueMax, ref scoreValue, ref difficultLevel, ref bulletsValue, ref createPlatformValue, symbolPlayer, symbolDeadPlayer,
+                         symbolSky);
 
                     ControlPlaying(objects, ref playerPositionX, ref playerPositionY, gameScreenLength, gameScreenHeigth, gameGroundHeigth, displayPositionX,
                         displayPositionY, barValueMax, ref lifeValue, lifeValueMax, ref canJump, ref scoreValue, ref chanceGeneratePit, ref difficultLevel, ref bulletsValue,
-                         ref createPlatformValue, ref isPlaying);
+                         ref createPlatformValue, ref isPlaying, symbolPlatform, symbolGrass, symbolPit, symbolSky, symbolSharp, symbolPlayer, symbolDeadPlayer, symbolBullet,
+                         symbolHealItem, symbolCreateItem, symbolPunch);
 
                     FallWithoutFooting(objects, ref playerPositionX, ref playerPositionY, gameScreenLength, gameScreenHeigth, gameGroundHeigth, displayPositionX, displayPositionY,
                          barValueMax, ref lifeValue, lifeValueMax, ref canJump, ref scoreValue, ref chanceGeneratePit, ref difficultLevel, ref bulletsValue,
-                         ref createPlatformValue, ref isPlaying);
-
+                         ref createPlatformValue, ref isPlaying, symbolPlayer, symbolDeadPlayer, symbolSky, symbolSharp, symbolPit, symbolHealItem, symbolCreateItem, symbolBullet,
+                          symbolPlatform, symbolGrass, symbolPunch);
                 }
 
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("Game Over :(");
                 Console.ReadKey(true);
                 Console.Clear();
-                Console.Write("Play again? \tY/N");
+                Console.Write($"Your SCORE : {scoreValue} \nPlay again? \tY/N");
                 ConsoleKeyInfo charKey = Console.ReadKey(true);
 
                 switch (charKey.Key)
                 {
-                    case ConsoleKey.Y:
+                    case PressKeyY:
                         isPlayingAgain = true;
                         break;
-                    case ConsoleKey.N:
+                    case PressKeyN:
                         isPlayingAgain = false;
                         break;
                     default:
@@ -70,32 +84,34 @@ namespace brave
             }
         }
 
-        static void GenerateNewObjects(char[,] objects, int ground, int playerPositionX, int playerPositionY, int heigth, ref int lifeValue, int length, int displayX, int displayY,
-            int barValueMax, int lifeValueMax, ref int scoreValue, ref int chanceGeneratePit, ref int difficultLevel, ref int bulletsValue, ref int createPlatformValue)
+        static void ConsiderProgress(ref int scoreValue, ref int chanceGeneratePit, ref int difficultLevel)
+        {
+            int maxChanceGeneratePit = 100;
+            int difficultRisePits = 10;
+            int difficultRiseScore = 150;
+
+            scoreValue++;
+
+            if (chanceGeneratePit != maxChanceGeneratePit && scoreValue / difficultRiseScore > difficultLevel)
+            {
+                difficultLevel++;
+                chanceGeneratePit += difficultRisePits;
+            }
+        }
+
+        static void GenerateNewObjects(char[,] objects, int ground, int playerPositionX, int playerPositionY, ref int scoreValue, ref int chanceGeneratePit, ref int difficultLevel,
+            char symbolSky, char symbolPlatform, char symbolGrass, char symbolPit,  char symbolSharp)
         {
             int maxPlayerPositionX = 15;
             int chanceGenerateObjectRange = 100;
             int chanceGenerateSharp = 8;
             int chanceGeneratePlatform = 2;
             int chanceExtendPlatform = 90;
-            int difficultRiseScore = 150;
-            int difficultRisePits = 10;
 
-            scoreValue++;
-
-            if(chanceGeneratePit != 100 && scoreValue / difficultRiseScore > difficultLevel)
-            {
-                difficultLevel++;
-                chanceGeneratePit += difficultRisePits;
-            }
-
-            if (playerPositionX == maxPlayerPositionX && objects[playerPositionY, playerPositionX + 1] != 'T' || objects[playerPositionY, playerPositionX + 1] != 'M')
+            if (playerPositionX == maxPlayerPositionX && objects[playerPositionY, playerPositionX + 1] != symbolPlatform || objects[playerPositionY, playerPositionX + 1] != symbolGrass)
             {
                 Random random = new Random();
-                int erasingXNumber = 1;
                 int randomCreatedPit = random.Next(0, chanceGenerateObjectRange);
-
-                ReactCollision(objects[playerPositionY, playerPositionX + 1], ref lifeValue, ref bulletsValue, ref createPlatformValue);
 
                 for (int y = 0; y < objects.GetLength(0) - ground; y++)
                 {
@@ -112,104 +128,77 @@ namespace brave
                         objects[y, x] = objects[y, x + 1];
                     }
                 }
-
-                objects[playerPositionY, playerPositionX - erasingXNumber] = ' ';
-
 
                 for (int y = 0; y < objects.GetLength(0) - ground; y++)
                 {
                     for (int x = objects.GetLength(1) - 1; x < objects.GetLength(1); x++)
                     {
                         int randomCreatedObject = random.Next(0, chanceGenerateObjectRange);                       
-                        objects[y, x] = ' ';
+                        objects[y, x] = symbolSky;
 
                         if (chanceGenerateSharp > randomCreatedObject)
                         {
-                            objects[y, x] = '#';
+                            objects[y, x] = symbolSharp;
                         }
 
-                        if (chanceGeneratePlatform > randomCreatedObject || (objects[y, x - 1] == 'T' && randomCreatedObject < chanceExtendPlatform))
+                        if (chanceGeneratePlatform > randomCreatedObject || (objects[y, x - 1] == symbolPlatform && randomCreatedObject < chanceExtendPlatform))
                         {
-                            objects[y, x] = 'T';
+                            objects[y, x] = symbolPlatform;
                         }                        
                     }
                 }
-
 
                 for (int y = objects.GetLength(0) - ground; y < objects.GetLength(0); y++)
                 {
                     for (int x = objects.GetLength(1) - 1; x < objects.GetLength(1); x++)
                     {
                         int randomCreatedObject = random.Next(0, chanceGenerateObjectRange);
-                        objects[y, x] = 'M';
+                        objects[y, x] = symbolGrass;
 
                         if (randomCreatedObject < chanceGeneratePit)
                         {
-                            objects[y, x] = '~';
+                            objects[y, x] = symbolPit;
                         }
                     }
                 }
+
+                ConsiderProgress(ref scoreValue, ref chanceGeneratePit, ref difficultLevel);
             }                       
         }
 
-        static void MovePlayerLeft(char[,] objects, ref int playerPositionX, ref int playerPositionY, int screenHeigth, int groundHeigth, ref int lifeValue, ref int bulletsValue,
-            ref int createPlatformValue)
-        {
-            if (playerPositionX > 1 && objects[playerPositionY, playerPositionX - 1] != 'M' && objects[playerPositionY, playerPositionX - 1] != 'T')
-            {
-                ReactCollision(objects[playerPositionY, playerPositionX - 1], ref lifeValue, ref bulletsValue, ref createPlatformValue);
 
-                playerPositionX--;
-
-                if (playerPositionY > screenHeigth - groundHeigth - 1)
-                {
-                    objects[playerPositionY, playerPositionX + 1] = '~';
-                }
-                else
-                {
-                    objects[playerPositionY, playerPositionX + 1] = ' ';
-                }
-            }
-        }
-
-        static void MovePlayerRight(char[,] objects, int ground, ref int playerPositionX, ref int playerPositionY, int heigth, ref int lifeValue, int length, int displayX,
-            int displayY, int barValueMax, int lifeValueMax, ref int scoreValue, ref int chanceGeneratePit, ref int difficultLevel, ref int bulletsValue, ref int createPlatformValue)
+        static void MovePlayer(char[,] objects, int ground, ref int playerPositionX, ref int playerPositionY, int heigth, ref int lifeValue, int length, int displayX,
+            int displayY, int barValueMax, int lifeValueMax, ref int scoreValue, ref int chanceGeneratePit, ref int difficultLevel, ref int bulletsValue, ref int createPlatformValue,
+            int directionX, char symbolPlatform, char symbolGrass, char symbolPit, char symbolSky, char symbolSharp)
         {
             int maxPlayerPositionX = 15;
+            char collisionChar = objects[playerPositionY, playerPositionX + directionX];
 
-            if (playerPositionX < maxPlayerPositionX && objects[playerPositionY, playerPositionX + 1] != 'M' && objects[playerPositionY, playerPositionX + 1] != 'T')
+            if (directionX > 0 && playerPositionX == maxPlayerPositionX && objects[playerPositionY, playerPositionX + directionX] != symbolGrass &&
+                objects[playerPositionY, playerPositionX + directionX] != symbolPlatform)
             {
-                ReactCollision(objects[playerPositionY, playerPositionX + 1], ref lifeValue, ref bulletsValue, ref createPlatformValue);
-
-                playerPositionX++;
-
-                if (playerPositionY > heigth - ground - 1)
-                {
-                    objects[playerPositionY, playerPositionX - 1] = '~';
-                }
-                else
-                {
-                    objects[playerPositionY, playerPositionX - 1] = ' ';
-                }
+                GenerateNewObjects(objects, ground, playerPositionX, playerPositionY, ref scoreValue, ref chanceGeneratePit, ref difficultLevel, symbolSky, symbolPlatform,
+                    symbolGrass, symbolPit, symbolSharp);               
             }
-            
-            if(playerPositionX == maxPlayerPositionX && objects[playerPositionY, playerPositionX + 1] != 'M' && objects[playerPositionY, playerPositionX + 1] != 'T')
+            else if (playerPositionX + directionX > 0 && objects[playerPositionY, playerPositionX + directionX] != symbolGrass &&
+                objects[playerPositionY, playerPositionX + directionX] != symbolPlatform)
             {
-                GenerateNewObjects(objects, ground, playerPositionX, playerPositionY, heigth, ref lifeValue, length, displayX, displayY, barValueMax, lifeValueMax,
-                     ref scoreValue, ref chanceGeneratePit, ref difficultLevel, ref bulletsValue, ref createPlatformValue);
+                playerPositionX += directionX;
+            }
 
-                if (playerPositionY > heigth - ground - 1)
-                {
-                    objects[playerPositionY, playerPositionX - 1] = '~';
-                }
-                else
-                {
-                    objects[playerPositionY, playerPositionX - 1] = ' ';
-                }
-            }        
+            if (playerPositionY > heigth - ground - 1)
+            {
+                objects[playerPositionY, playerPositionX - directionX] = symbolPit;
+            }
+            else
+            {
+                objects[playerPositionY, playerPositionX - directionX] = symbolSky;
+            }
+
+            ReactCollision(collisionChar, ref lifeValue, ref bulletsValue, ref createPlatformValue);
         }
 
-        static char[,] CreateInitialObjects(int length, int heigth, int ground)
+        static char[,] CreateInitialObjects(int length, int heigth, int ground, char symbolSky, char symbolGrass)
         {
             char[,] objects = new char[heigth, length];
 
@@ -217,7 +206,7 @@ namespace brave
             {
                 for (int x = 0; x < objects.GetLength(1); x++)
                 {
-                    objects[y, x] = ' ';
+                    objects[y, x] = symbolSky;
                 }
             }
 
@@ -225,7 +214,7 @@ namespace brave
             {
                 for (int x = 0; x < objects.GetLength(1); x++)
                 {
-                    objects[y, x] = 'M';
+                    objects[y, x] = symbolGrass;
                 }
             }
 
@@ -233,147 +222,151 @@ namespace brave
         }
 
         static void DrawObjects(char[,] objects, int length, int heigth, int ground, ref int playerPositionX, ref int playerPositionY, int displayX, int displayY, int barValueMax,
-            ref int lifeValue, int lifeValueMax, ref int scoreValue, ref int difficultLevel, ref int bulletsValue, ref int createPlatformValue)
+            ref int lifeValue, int lifeValueMax, ref int scoreValue, ref int difficultLevel, ref int bulletsValue, ref int createPlatformValue, char symbolPlayer,
+            char symbolDeadPlayer, char symbolSky)
         {
-
             DrawInterfacePanel(0, heigth, barValueMax, ref lifeValue, lifeValueMax, ConsoleColor.Red, ConsoleColor.DarkGray, ref scoreValue, ref difficultLevel, ref bulletsValue,
-                ref createPlatformValue);
+                ref createPlatformValue, symbolSky);
 
             Console.SetCursorPosition(displayX, displayY);
 
-            SetPlayerPosition(objects, ref playerPositionX, ref playerPositionY, ref lifeValue);
+            SetPlayerPosition(objects, ref playerPositionX, ref playerPositionY, ref lifeValue, symbolPlayer, symbolDeadPlayer);
 
             for (int y = 0; y < objects.GetLength(0); y++)
             {
                 for (int x = 0; x < objects.GetLength(1); x++)
                 {
-                    DrawColoredSymbol(objects[y, x], ref playerPositionY, heigth, ground);
+                    DrawColoredSymbol(objects[y, x], ref playerPositionY, heigth, ground, symbolPlayer);
                 }
 
                 Console.WriteLine();
             }
         }
 
-        static void SetPlayerPosition(char[,] objects, ref int playerPositonX, ref int playerPositionY, ref int lifeValue)
+        static void SetPlayerPosition(char[,] objects, ref int playerPositonX, ref int playerPositionY, ref int lifeValue, char symbolPlayer, char symbolDeadPlayer)
         {
-            objects[playerPositionY, playerPositonX] = '>';
+            objects[playerPositionY, playerPositonX] = symbolPlayer;
 
             if (lifeValue == 0)
             {
-                objects[playerPositionY, playerPositonX] = '_';
+                objects[playerPositionY, playerPositonX] = symbolDeadPlayer;
             }
         }
 
         static void DoPunch(char[,] objects, int playerPositionX, int playerPositionY, int gameScreenLength, int gameScreenHeigth, int gameGroundHeigth, int displayX, int displayY,
-            int barValueMax, ref int lifeValue, int lifeValueMax, ref int scoreValue, ref int difficultLevel, ref int bulletsValue, ref int createPlatformValue)
+            int barValueMax, ref int lifeValue, int lifeValueMax, ref int scoreValue, ref int difficultLevel, ref int bulletsValue, ref int createPlatformValue, char symbolPlayer, 
+            char symbolDeadPlayer, char symbolSky, char symbolSharp, char symbolPunch, char symbolHealItem, char symbolBullet, char symbolCreateItem)
         {
             int punchX = playerPositionX + 1;
             int sharpScore = 10;
+            int punchSpeed = 70;
 
-            if (objects[playerPositionY, punchX] == ' ' || objects[playerPositionY, punchX] == '#')
+            if (objects[playerPositionY, punchX] == symbolSky || objects[playerPositionY, punchX] == symbolSharp)
             {
-                if (objects[playerPositionY, punchX] == ' ')
+                if (objects[playerPositionY, punchX] == symbolSky)
                 {
-                    objects[playerPositionY, punchX] = '-';
+                    objects[playerPositionY, punchX] = symbolPunch;
 
                     DrawObjects(objects, gameScreenLength, gameScreenHeigth, gameGroundHeigth, ref playerPositionX, ref playerPositionY, displayX, displayY, barValueMax,
-                    ref lifeValue, lifeValueMax, ref scoreValue, ref difficultLevel, ref bulletsValue, ref createPlatformValue);
+                    ref lifeValue, lifeValueMax, ref scoreValue, ref difficultLevel, ref bulletsValue, ref createPlatformValue, symbolPlayer, symbolDeadPlayer, symbolSky);
 
-                    Thread.Sleep(70);
+                    Thread.Sleep(punchSpeed);
 
-                    objects[playerPositionY, punchX] = ' ';
+                    objects[playerPositionY, punchX] = symbolSky;
                 }
 
-                if (objects[playerPositionY, punchX] == '#')
+                if (objects[playerPositionY, punchX] == symbolSharp)
                 {
                     scoreValue += sharpScore;
-                    objects[playerPositionY, punchX] = '-';
+                    objects[playerPositionY, punchX] = symbolPunch;
 
                     DrawObjects(objects, gameScreenLength, gameScreenHeigth, gameGroundHeigth, ref playerPositionX, ref playerPositionY, displayX, displayY, barValueMax,
-                    ref lifeValue, lifeValueMax, ref scoreValue, ref difficultLevel, ref bulletsValue, ref createPlatformValue);
+                    ref lifeValue, lifeValueMax, ref scoreValue, ref difficultLevel, ref bulletsValue, ref createPlatformValue, symbolPlayer, symbolDeadPlayer, symbolSky);
 
                     Thread.Sleep(70);
 
-                    objects[playerPositionY, punchX] = GenerateDrop();
-
+                    objects[playerPositionY, punchX] = GenerateDrop( symbolSky,  symbolHealItem,  symbolBullet,  symbolCreateItem);
                 }
             }
         }
 
-        static void CreatePlatform(char[,] objects, int playerPositionX, int playerPositionY, int gameScreenLength, int gameScreenHeigth, int gameGroundHeigth, int displayX, int displayY,
-            int barValueMax, ref int lifeValue, int lifeValueMax, ref int scoreValue, ref int difficultLevel, ref int bulletsValue, ref int createPlatformValue)
+        static void CreatePlatform(char[,] objects, int playerPositionX, int playerPositionY, int gameScreenLength, int gameScreenHeigth, int gameGroundHeigth, int displayX,
+            int displayY, int barValueMax, ref int lifeValue, int lifeValueMax, ref int scoreValue, ref int difficultLevel, ref int bulletsValue, ref int createPlatformValue, 
+            char symbolPlayer, char symbolDeadPlayer, char symbolSky, char symbolSharp, char symbolPunch, char symbolPlatform)
         {
             int punchX = playerPositionX + 1;
             int createdPlatforms = 3;
+            int createSpeed = 70;
 
-            if (createPlatformValue > 0 && (objects[playerPositionY, punchX] == ' ' || objects[playerPositionY, punchX] == '#'))
+            if (createPlatformValue > 0 && (objects[playerPositionY, punchX] == symbolSky || objects[playerPositionY, punchX] == symbolSharp))
             {
                 createPlatformValue--;
 
-                if (objects[playerPositionY, punchX] == ' ')
+                if (objects[playerPositionY, punchX] == symbolSky)
                 {
-                    objects[playerPositionY, punchX] = '-';
+                    objects[playerPositionY, punchX] = symbolPunch;
 
                     for (int i = 0; i < createdPlatforms; i++)
                     {
                         ++punchX;
-                        objects[playerPositionY, punchX] = 'T';
+                        objects[playerPositionY, punchX] = symbolPlatform;
                     }
 
                     DrawObjects(objects, gameScreenLength, gameScreenHeigth, gameGroundHeigth, ref playerPositionX, ref playerPositionY, displayX, displayY, barValueMax,
-                    ref lifeValue, lifeValueMax, ref scoreValue, ref difficultLevel, ref bulletsValue, ref createPlatformValue);
+                    ref lifeValue, lifeValueMax, ref scoreValue, ref difficultLevel, ref bulletsValue, ref createPlatformValue, symbolPlayer, symbolDeadPlayer, symbolSky);
 
-                    Thread.Sleep(70);
+                    Thread.Sleep(createSpeed);
 
-                    objects[playerPositionY, punchX - createdPlatforms] = ' ';
+                    objects[playerPositionY, punchX - createdPlatforms] = symbolSky;
                 }
             }
         }
 
         static void Shoot(char[,] objects, int playerPositionX, int playerPositionY, int gameScreenLength, int gameScreenHeigth, int gameGroundHeigth, int displayX, int displayY,
-            int barValueMax, ref int lifeValue, int lifeValueMax, ref int scoreValue, ref int difficultLevel, ref int bulletsValue, ref int createPlatformValue)
+            int barValueMax, ref int lifeValue, int lifeValueMax, ref int scoreValue, ref int difficultLevel, ref int bulletsValue, ref int createPlatformValue, char symbolPlayer,
+            char symbolDeadPlayer, char symbolSky, char symbolSharp, char symbolBullet, char symbolPlatform, char symbolHealItem, char symbolCreateItem)
         {
             int projectileRange = 15;
             int projectileX = playerPositionX + 1;
             int sharpScore = 10;
 
-            if ( bulletsValue > 0 && (objects[playerPositionY, projectileX] == ' ' || objects[playerPositionY, projectileX] == '#'))
+            if ( bulletsValue > 0 && (objects[playerPositionY, projectileX] == symbolSky || objects[playerPositionY, projectileX] == symbolSharp))
             {
                 bulletsValue--;
-                objects[playerPositionY, projectileX] = '=';
+                objects[playerPositionY, projectileX] = symbolBullet;
 
                 for (int x = 0; x < projectileRange; x++)
                 {
-                    if (objects[playerPositionY, projectileX] == '#')
+                    if (objects[playerPositionY, projectileX] == symbolSharp)
                     {
                         scoreValue += sharpScore;
 
-                        objects[playerPositionY, projectileX] = GenerateDrop();
+                        objects[playerPositionY, projectileX] = GenerateDrop( symbolSky,  symbolHealItem,  symbolBullet,  symbolCreateItem);
 
                         break;
                     }
 
-                    if (objects[playerPositionY, projectileX] == 'T')
+                    if (objects[playerPositionY, projectileX] == symbolPlatform)
                     {
                         break;
                     }
 
-                    objects[playerPositionY, projectileX] = '=';
-                    objects[playerPositionY, projectileX - 1] = ' ';
+                    objects[playerPositionY, projectileX] = symbolBullet;
+                    objects[playerPositionY, projectileX - 1] = symbolSky;
                     projectileX++;
 
                     DrawObjects(objects, gameScreenLength, gameScreenHeigth, gameGroundHeigth, ref playerPositionX, ref playerPositionY, displayX, displayY, barValueMax,
-                        ref lifeValue, lifeValueMax, ref scoreValue, ref difficultLevel, ref bulletsValue, ref createPlatformValue);
-
+                        ref lifeValue, lifeValueMax, ref scoreValue, ref difficultLevel, ref bulletsValue, ref createPlatformValue, symbolPlayer, symbolDeadPlayer, symbolSky);
                 }
 
-                objects[playerPositionY, projectileX - 1] = ' ';
+                objects[playerPositionY, projectileX - 1] = symbolSky;
             }
         }
 
         static void Jump(char[,] objects, ref int playerPositionX, ref int playerPositionY, int gameScreenLength, int gameScreenHeigth, int gameGroundHeigth, int displayX,
             int displayY, int barValueMax, ref int lifeValue, int lifeValueMax, ref bool canJump, ref int scoreValue, ref int chanceGeneratePit, ref int difficultLevel,
-            ref int bulletsValue, ref int createPlatformValue, ref bool isPlaying)
+            ref int bulletsValue, ref int createPlatformValue, ref bool isPlaying, char symbolPlayer, char symbolDeadPlayer, char symbolPlatform, char symbolGrass, char symbolPit,
+            char symbolSky, char symbolSharp, char symbolHealItem, char symbolCreateItem, char symbolBullet, char symbolPunch)
         {
             if (canJump)
             {
@@ -382,30 +375,31 @@ namespace brave
 
                 for (int y = 0; y < heigthJump; y++)
                 {
-                    if (playerPositionY > 0 && objects[playerPositionY - 1, playerPositionX] != 'T' && objects[playerPositionY - 1, playerPositionX] != 'M')
+                    if (playerPositionY > 0 && objects[playerPositionY - 1, playerPositionX] != symbolPlatform && objects[playerPositionY - 1, playerPositionX] != symbolGrass)
                     {
-                        
-                        ReactCollision(objects[playerPositionY - 1, playerPositionX], ref lifeValue, ref bulletsValue, ref createPlatformValue);
-
+                        char collisionChar = objects[playerPositionY - 1, playerPositionX];
                         playerPositionY--;
-                        objects[playerPositionY + 1, playerPositionX] = ' ';
+                        objects[playerPositionY + 1, playerPositionX] = symbolSky;
 
                         if (playerPositionY >= gameScreenHeigth - gameGroundHeigth - 1)
                         {
-                            objects[playerPositionY + 1, playerPositionX] = '~';
+                            objects[playerPositionY + 1, playerPositionX] = symbolPit;
                         }
 
                         DrawObjects(objects, gameScreenLength, gameScreenHeigth, gameGroundHeigth, ref playerPositionX, ref playerPositionY, displayX, displayY, barValueMax, 
-                            ref lifeValue, lifeValueMax, ref scoreValue, ref difficultLevel, ref bulletsValue, ref createPlatformValue );
+                            ref lifeValue, lifeValueMax, ref scoreValue, ref difficultLevel, ref bulletsValue, ref createPlatformValue, symbolPlayer, symbolDeadPlayer, symbolSky );
+
+                        ReactCollision(collisionChar, ref lifeValue, ref bulletsValue, ref createPlatformValue);
                     }
 
                     ControlPlaying(objects, ref playerPositionX, ref playerPositionY, gameScreenLength, gameScreenHeigth, gameGroundHeigth, displayX, displayY, barValueMax,
-                        ref lifeValue, lifeValueMax, ref canJump, ref scoreValue, ref chanceGeneratePit, ref difficultLevel, ref bulletsValue, ref createPlatformValue, ref isPlaying);
-
+                        ref lifeValue, lifeValueMax, ref canJump, ref scoreValue, ref chanceGeneratePit, ref difficultLevel, ref bulletsValue, ref createPlatformValue, ref isPlaying,
+                         symbolPlatform, symbolGrass, symbolPit, symbolSky, symbolSharp, symbolPlayer, symbolDeadPlayer, symbolBullet, symbolHealItem, symbolCreateItem, symbolPunch);
                 }
 
                 FallWithoutFooting(objects, ref playerPositionX, ref playerPositionY, gameScreenLength, gameScreenHeigth, gameGroundHeigth, displayX, displayY, barValueMax,
-                    ref lifeValue, lifeValueMax, ref canJump, ref scoreValue, ref chanceGeneratePit, ref difficultLevel, ref bulletsValue, ref createPlatformValue, ref isPlaying);
+                    ref lifeValue, lifeValueMax, ref canJump, ref scoreValue, ref chanceGeneratePit, ref difficultLevel, ref bulletsValue, ref createPlatformValue, ref isPlaying,
+                    symbolPlayer, symbolDeadPlayer, symbolSky, symbolSharp, symbolPit, symbolHealItem, symbolCreateItem, symbolBullet, symbolPlatform, symbolGrass, symbolPunch);
 
                 canJump = true;
             }
@@ -414,25 +408,25 @@ namespace brave
 
         static void FallWithoutFooting(char[,] objects, ref int playerPositionX, ref int playerPositionY, int gameScreenLength, int gameScreenHeigth, int gameGroundHeigth,
             int displayX, int displayY, int barValueMax, ref int lifeValue, int lifeValueMax, ref bool canJump, ref int scoreValue, ref int chanceGeneratePit,
-             ref int difficultLevel, ref int bulletsValue, ref int createPlatformValue, ref bool isPlaying)
+             ref int difficultLevel, ref int bulletsValue, ref int createPlatformValue, ref bool isPlaying, char symbolPlayer, char symbolDeadPlayer, char symbolSky, char symbolSharp,
+             char symbolPit, char symbolHealItem, char symbolCreateItem, char symbolBullet, char symbolPlatform, char symbolGrass, char symbolPunch)
         {
-            while (playerPositionY < gameScreenHeigth - 1 && objects[playerPositionY + 1, playerPositionX] == ' ' 
-                || playerPositionY < gameScreenHeigth - 1 && objects[playerPositionY + 1, playerPositionX] == '#'
-                || playerPositionY < gameScreenHeigth - 1 && objects[playerPositionY + 1, playerPositionX] == '~' 
-                || playerPositionY < gameScreenHeigth - 1 && objects[playerPositionY + 1, playerPositionX] == '+' 
-                || playerPositionY < gameScreenHeigth - 1 && objects[playerPositionY + 1, playerPositionX] == 'c'
-                || playerPositionY < gameScreenHeigth - 1 && objects[playerPositionY + 1, playerPositionX] == '=')
+            while (playerPositionY < gameScreenHeigth - 1 && objects[playerPositionY + 1, playerPositionX] == symbolSky 
+                || playerPositionY < gameScreenHeigth - 1 && objects[playerPositionY + 1, playerPositionX] == symbolSharp
+                || playerPositionY < gameScreenHeigth - 1 && objects[playerPositionY + 1, playerPositionX] == symbolPit 
+                || playerPositionY < gameScreenHeigth - 1 && objects[playerPositionY + 1, playerPositionX] == symbolHealItem 
+                || playerPositionY < gameScreenHeigth - 1 && objects[playerPositionY + 1, playerPositionX] == symbolCreateItem
+                || playerPositionY < gameScreenHeigth - 1 && objects[playerPositionY + 1, playerPositionX] == symbolBullet)
             {
-
-                ReactCollision(objects[playerPositionY + 1, playerPositionX], ref lifeValue, ref bulletsValue, ref createPlatformValue);
-
+                char collisionChar = objects[playerPositionY + 1, playerPositionX];
                 playerPositionY++;
+                objects[playerPositionY - 1, playerPositionX] = symbolSky;
 
-                objects[playerPositionY - 1, playerPositionX] = ' ';
+                ReactCollision(collisionChar, ref lifeValue, ref bulletsValue, ref createPlatformValue);
 
                 if (playerPositionY > gameScreenHeigth - gameGroundHeigth)
                 {
-                    objects[playerPositionY - 1, playerPositionX] = '~';
+                    objects[playerPositionY - 1, playerPositionX] = symbolPit;
                 }
 
                 if (playerPositionY == gameScreenHeigth - 1)
@@ -441,29 +435,32 @@ namespace brave
                 }
 
                 DrawObjects(objects, gameScreenLength, gameScreenHeigth, gameGroundHeigth, ref playerPositionX, ref playerPositionY, displayX, displayY, barValueMax, ref lifeValue,
-                    lifeValueMax, ref scoreValue, ref difficultLevel, ref bulletsValue, ref createPlatformValue);
+                    lifeValueMax, ref scoreValue, ref difficultLevel, ref bulletsValue, ref createPlatformValue, symbolPlayer, symbolDeadPlayer, symbolSky);
 
                 ControlPlaying(objects, ref playerPositionX, ref playerPositionY, gameScreenLength, gameScreenHeigth, gameGroundHeigth, displayX, displayY, barValueMax,
-                    ref lifeValue, lifeValueMax, ref canJump, ref scoreValue, ref chanceGeneratePit, ref difficultLevel, ref bulletsValue, ref createPlatformValue, ref isPlaying);
-
+                    ref lifeValue, lifeValueMax, ref canJump, ref scoreValue, ref chanceGeneratePit, ref difficultLevel, ref bulletsValue, ref createPlatformValue, ref isPlaying,
+                    symbolPlatform, symbolGrass, symbolPit, symbolSky, symbolSharp, symbolPlayer, symbolDeadPlayer, symbolBullet, symbolHealItem, symbolCreateItem, symbolPunch);
             }
         }
 
         static void DrawInterfacePanel(int positionX, int positionY, int valueBarMax, ref int valueFactual, int valueFactualMax, ConsoleColor colorValue, ConsoleColor colorEmpty,
-            ref int scoreValue, ref int difficultLevel, ref int bulletsValue, ref int createPlatformValue)
+            ref int scoreValue, ref int difficultLevel, ref int bulletsValue, ref int createPlatformValue, char symbolSky)
         {
             string bar = "";
             string emptyBar = "";
             int valueRatio = valueFactualMax / valueBarMax;
 
-            for (int i = 0; i < valueFactual / valueRatio; i++)
+            for (int i = 0; i < valueBarMax; i++)
             {
-                bar += " ";
-            }
+                if(i >= valueFactual / valueRatio)
+                {
+                    emptyBar += symbolSky;
 
-            for (int i = valueFactual / valueRatio; i < valueBarMax; i++)
-            {
-                emptyBar += " ";
+                }
+                else
+                {
+                    bar += symbolSky;
+                }
             }
 
             Console.SetCursorPosition(positionX, positionY);
@@ -481,116 +478,163 @@ namespace brave
             Console.Write("Control :\n\tD - move right\t\tA - move left\t\tSpacebar - jump\n\tEnter - shoot\t\tL - hit\t\tK - create platform\n\tR - restart");
         }
 
-        static void DrawColoredSymbol(char symbol, ref int playerPositionY, int gameScreenHeigth, int gameGroundHeigth)
+        static void DrawColoredSymbol(char symbol, ref int playerPositionY, int gameScreenHeigth, int gameGroundHeigth, char symbolPlayer)
         {
+            const char symbolSky = ' ';
+            const char symbolAlivePlayer = '>';
+            const char symbolDeadPlayer = '_';
+            const char symbolPunch = '-';
+            const char symbolSharp = '#';
+            const char symbolGrass = 'M';
+            const char symbolPlatform = 'T';
+            const char symbolPit = '~';
+            const char symbolBullet = '=';
+            const char symbolCreateItem = 'c';
+            const char symbolHealItem = '+';
+
             switch (symbol)
             {
-                case ' ':
-                    Console.BackgroundColor = ConsoleColor.DarkCyan;
-                    break;
-                case '>':
-                case '_':
-                case '-':
-                    Console.BackgroundColor = ConsoleColor.DarkCyan;
-                    Console.ForegroundColor = ConsoleColor.DarkRed;
+                case symbolSky:
 
-                    if (playerPositionY > gameScreenHeigth - gameGroundHeigth - 1)
-                    {
-                        Console.BackgroundColor = ConsoleColor.Black;
-                    }
+                    ChangeColor(ConsoleColor.DarkCyan, ConsoleColor.DarkCyan, ref playerPositionY, gameScreenHeigth, gameGroundHeigth, symbol, symbolPlayer);
 
                     break;
-                case '#':
-                    Console.BackgroundColor = ConsoleColor.DarkCyan;
-                    Console.ForegroundColor = ConsoleColor.White;
+                case symbolAlivePlayer:
+                case symbolDeadPlayer:
+                case symbolPunch:
+
+                    ChangeColor(ConsoleColor.DarkCyan, ConsoleColor.DarkRed, ref playerPositionY, gameScreenHeigth, gameGroundHeigth, symbol, symbolPlayer);
+
                     break;
-                case 'M':
-                    Console.BackgroundColor = ConsoleColor.Green;
-                    Console.ForegroundColor = ConsoleColor.DarkGreen;
+                case symbolSharp:
+
+                    ChangeColor(ConsoleColor.DarkCyan, ConsoleColor.White, ref playerPositionY, gameScreenHeigth, gameGroundHeigth, symbol, symbolPlayer);
+
                     break;
-                case 'T':
-                    Console.BackgroundColor = ConsoleColor.DarkYellow;
-                    Console.ForegroundColor = ConsoleColor.Yellow;
+                case symbolGrass:
+
+                    ChangeColor(ConsoleColor.Green, ConsoleColor.DarkGreen, ref playerPositionY, gameScreenHeigth, gameGroundHeigth, symbol, symbolPlayer);
+
                     break;
-                case '~':
-                    Console.BackgroundColor = ConsoleColor.Black;
-                    Console.ForegroundColor = ConsoleColor.DarkYellow;
+                case symbolPlatform:
+
+                    ChangeColor(ConsoleColor.DarkYellow, ConsoleColor.Yellow, ref playerPositionY, gameScreenHeigth, gameGroundHeigth, symbol, symbolPlayer);
+
                     break;
-                case '=':
-                    Console.BackgroundColor = ConsoleColor.DarkCyan;
-                    Console.ForegroundColor = ConsoleColor.DarkYellow;
+                case symbolPit:
+
+                    ChangeColor(ConsoleColor.Black, ConsoleColor.DarkYellow, ref playerPositionY, gameScreenHeigth, gameGroundHeigth, symbol, symbolPlayer);
+
                     break;
-                case 'c':
-                    Console.BackgroundColor = ConsoleColor.DarkCyan;
-                    Console.ForegroundColor = ConsoleColor.Yellow;
+                case symbolBullet:
+
+                    ChangeColor(ConsoleColor.DarkCyan, ConsoleColor.DarkYellow, ref playerPositionY, gameScreenHeigth, gameGroundHeigth, symbol, symbolPlayer);
+
                     break;
-                case '+':
-                    Console.BackgroundColor = ConsoleColor.DarkCyan;
-                    Console.ForegroundColor = ConsoleColor.Green;
+                case symbolCreateItem:
+
+                    ChangeColor(ConsoleColor.DarkCyan, ConsoleColor.Yellow, ref playerPositionY, gameScreenHeigth, gameGroundHeigth, symbol, symbolPlayer);
+
+                    break;
+                case symbolHealItem:
+
+                    ChangeColor(ConsoleColor.DarkCyan, ConsoleColor.Green, ref playerPositionY, gameScreenHeigth, gameGroundHeigth, symbol, symbolPlayer);
+
                     break;
                 default:
                     break;
             }
 
             Console.Write(symbol);
-
             Console.ResetColor();
         }
 
-        static int ChangeLifeValue(int lifeValue, int changeableLifeValue)
+        static void ChangeColor(ConsoleColor backgroundColor, ConsoleColor symbolColor, ref int playerPositionY, int gameScreenHeigth, int gameGroundHeigth, char charSymbol,
+            char symbolPlayer)
+        {
+            Console.ForegroundColor = symbolColor;
+
+            if (playerPositionY > gameScreenHeigth - gameGroundHeigth - 1 && charSymbol == symbolPlayer)
+            {
+                Console.BackgroundColor = ConsoleColor.Black;
+            }
+            else
+            {
+                Console.BackgroundColor = backgroundColor;
+            }
+        }
+
+        static int IncreaseLifeValue(int lifeValue, int changeableLifeValue)
         {
             return lifeValue += changeableLifeValue;
         }
 
         static void ControlPlaying(char[,] objects, ref int playerPositionX, ref int playerPositionY, int gameScreenLength, int gameScreenHeigth, int gameGroundHeigth,
             int displayPositionX, int displayPositionY, int barValueMax, ref int lifeValue, int lifeValueMax, ref bool canJump, ref int scoreValue,
-            ref int chanceGeneratePit, ref int difficultLevel, ref int bulletsValue, ref int createPlatformValue, ref bool isPlaying)
+            ref int chanceGeneratePit, ref int difficultLevel, ref int bulletsValue, ref int createPlatformValue, ref bool isPlaying, char symbolPlatform, char symbolGrass,
+            char symbolPit, char symbolSky, char symbolSharp, char symbolPlayer, char symbolDeadPlayer, char symbolBullet, char symbolHealItem, char symbolCreateItem, 
+            char symbolPunch)
         {
+            const ConsoleKey PressKeyD = ConsoleKey.D;
+            const ConsoleKey PressKeyA = ConsoleKey.A;
+            const ConsoleKey PressEnter = ConsoleKey.Enter;
+            const ConsoleKey PressSpacebar = ConsoleKey.Spacebar;
+            const ConsoleKey PressKeyL = ConsoleKey.L;
+            const ConsoleKey PressKeyK = ConsoleKey.K;
+            const ConsoleKey PressKeyR = ConsoleKey.R;
+            int directionXRight = 1;
+            int directionXLeft = -1;
+
             if (Console.KeyAvailable)
             {
                 ConsoleKeyInfo charKey = Console.ReadKey(true);
 
                 switch (charKey.Key)
                 {
-                    case ConsoleKey.D:
+                    case PressKeyD:
 
-                        MovePlayerRight( objects, gameGroundHeigth, ref playerPositionX, ref playerPositionY, gameScreenHeigth, ref lifeValue, gameScreenLength,
+                        MovePlayer( objects, gameGroundHeigth, ref playerPositionX, ref playerPositionY, gameScreenHeigth, ref lifeValue, gameScreenLength,
                             displayPositionX, displayPositionY, barValueMax, lifeValueMax, ref scoreValue, ref chanceGeneratePit, ref difficultLevel, ref bulletsValue,
-                            ref createPlatformValue);
+                            ref createPlatformValue, directionXRight, symbolPlatform, symbolGrass, symbolPit, symbolSky, symbolSharp);
 
                         break;
-                    case ConsoleKey.A:
+                    case PressKeyA:
 
-                        MovePlayerLeft(objects, ref playerPositionX, ref playerPositionY, gameScreenHeigth, gameGroundHeigth,ref lifeValue, ref bulletsValue,
-                            ref createPlatformValue);
+                        MovePlayer(objects, gameGroundHeigth, ref playerPositionX, ref playerPositionY, gameScreenHeigth, ref lifeValue, gameScreenLength,
+                            displayPositionX, displayPositionY, barValueMax, lifeValueMax, ref scoreValue, ref chanceGeneratePit, ref difficultLevel, ref bulletsValue,
+                            ref createPlatformValue, directionXLeft, symbolPlatform, symbolGrass, symbolPit, symbolSky, symbolSharp);
 
                         break;
-                    case ConsoleKey.Enter:
+                    case PressEnter:
 
                         Shoot(objects, playerPositionX, playerPositionY, gameScreenLength, gameScreenHeigth, gameGroundHeigth, displayPositionX, displayPositionY, barValueMax,
-                            ref lifeValue, lifeValueMax, ref scoreValue, ref difficultLevel, ref bulletsValue, ref createPlatformValue);
+                            ref lifeValue, lifeValueMax, ref scoreValue, ref difficultLevel, ref bulletsValue, ref createPlatformValue, symbolPlayer, symbolDeadPlayer, symbolSky,
+                            symbolSharp, symbolBullet, symbolPlatform, symbolHealItem, symbolCreateItem);
 
                         break;
-                    case ConsoleKey.Spacebar:
+                    case PressSpacebar:
 
                         Jump(objects, ref playerPositionX, ref playerPositionY, gameScreenLength, gameScreenHeigth, gameGroundHeigth, displayPositionX, displayPositionY,
                             barValueMax, ref lifeValue, lifeValueMax, ref canJump, ref scoreValue, ref chanceGeneratePit, ref difficultLevel, ref bulletsValue,
-                            ref createPlatformValue, ref isPlaying);
+                            ref createPlatformValue, ref isPlaying, symbolPlayer, symbolDeadPlayer, symbolPlatform, symbolGrass, symbolPit, symbolSky, symbolSharp, symbolHealItem, 
+                            symbolCreateItem, symbolBullet, symbolPunch);
 
                         break;
-                    case ConsoleKey.L:
+                    case PressKeyL:
 
                         DoPunch(objects, playerPositionX, playerPositionY, gameScreenLength, gameScreenHeigth, gameGroundHeigth, displayPositionX, displayPositionY, barValueMax,
-                            ref lifeValue, lifeValueMax, ref scoreValue, ref difficultLevel, ref bulletsValue, ref createPlatformValue);
+                            ref lifeValue, lifeValueMax, ref scoreValue, ref difficultLevel, ref bulletsValue, ref createPlatformValue, symbolPlayer, symbolDeadPlayer, symbolSky, 
+                            symbolSharp, symbolPunch, symbolHealItem, symbolBullet, symbolCreateItem);
 
                         break;
-                    case ConsoleKey.K:
+                    case PressKeyK:
 
                         CreatePlatform(objects, playerPositionX, playerPositionY, gameScreenLength, gameScreenHeigth, gameGroundHeigth, displayPositionX,
-                            displayPositionY, barValueMax, ref lifeValue, lifeValueMax, ref scoreValue, ref difficultLevel, ref bulletsValue, ref createPlatformValue);
+                            displayPositionY, barValueMax, ref lifeValue, lifeValueMax, ref scoreValue, ref difficultLevel, ref bulletsValue, ref createPlatformValue, symbolPlayer, 
+                            symbolDeadPlayer, symbolSky, symbolSharp, symbolPunch, symbolPlatform);
 
                         break;
-                    case ConsoleKey.R:
+                    case PressKeyR:
                         isPlaying = false;
                         break;
                     default:
@@ -599,27 +643,25 @@ namespace brave
             }
         }
 
-        static char GenerateDrop()
+        static char GenerateDrop(char symbolSky, char symbolHealItem, char symbolBullet, char symbolCreateItem)
         {
-            char droppedItem = ' ';
-
-            int chanceDropRange = 20;
-            
+            char droppedItem = symbolSky;
+            int valueDropCreateItem = 2;
+            int chanceDropRange = 20;           
             Random random = new Random();
-
             int droppedItemNumber = random.Next(0, chanceDropRange);
 
             if(droppedItemNumber == 0)
             {
-                droppedItem = '+';
+                droppedItem = symbolHealItem;
             }
             else if(droppedItemNumber == 1)
             {
-                droppedItem = '=';
+                droppedItem = symbolBullet;
             }
-            else if (droppedItemNumber == 2)
+            else if (droppedItemNumber == valueDropCreateItem)
             {
-                droppedItem = 'c';
+                droppedItem = symbolCreateItem;
             }
 
             return droppedItem;
@@ -631,20 +673,27 @@ namespace brave
             int healItemRestores = 10;
             int bulletItemRestores = 5;
             int lifeValueMax = 100;
+            const char symbolSharp = '#';
+            const char symbolHealItem = '+';
+            const char symbolBullet = '=';
+            const char symbolCreateItem = 'c';
 
             switch (collisionChar)
             {
-                case '#':
-                    lifeValue = ChangeLifeValue(lifeValue, sharpDamage);
+                case symbolSharp:
+
+                    lifeValue = IncreaseLifeValue(lifeValue, sharpDamage);
+
                     break;
-                case '+':
-                    if(lifeValue < lifeValueMax)
-                    lifeValue = ChangeLifeValue(lifeValue, healItemRestores);
+                case symbolHealItem:
+
+                    if(lifeValue < lifeValueMax) lifeValue = IncreaseLifeValue(lifeValue, healItemRestores);
+
                     break;
-                case '=':
+                case symbolBullet:
                     bulletsValue += bulletItemRestores;
                     break;
-                case 'c':
+                case symbolCreateItem:
                     createPlatformValue ++;
                     break;
                 default:
